@@ -1,3 +1,3 @@
-### Create a Drawing App with HTML5 Canvas and JavaScript
+### Create a Paint Bucket Tool in HTML5 and JavaScript
 
 Article located at: http://wmalone.com/bucket
