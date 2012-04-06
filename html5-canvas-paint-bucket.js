@@ -19,8 +19,7 @@ var paintBucketApp = (function () {
 
 	"use strict";
 
-	var canvas,
-		context,
+	var context,
 		canvasWidth = 490,
 		canvasHeight = 220,
 		colorPurple = {
@@ -43,51 +42,49 @@ var paintBucketApp = (function () {
 			g: 105,
 			b: 40
 		},
-		color = [colorPurple, colorGreen, colorYellow, colorBrown],
-		curColorIndex = 0,
 		curColor = colorPurple,
 		outlineImage = new Image(),
-		paintImage = new Image(),
+		swatchImage = new Image(),
 		backgroundImage = new Image(),
-		clickX = [],
-		clickY = [],
-		clickColor = [],
-		clickTool = [],
-		clickSize = [],
-		clickDrag = [],
-		paint = false,
-		curTool = "crayon",
-		curSize = "normal",
-		mediumStartX = 18,
-		mediumStartY = 19,
-		mediumImageWidth = 93,
-		mediumImageHeight = 46,
+		swatchStartX = 18,
+		swatchStartY = 19,
+		swatchImageWidth = 93,
+		swatchImageHeight = 46,
 		drawingAreaX = 111,
 		drawingAreaY = 11,
 		drawingAreaWidth = 267,
 		drawingAreaHeight = 200,
-		outlineLayerData,
 		colorLayerData,
-		pixelStack = [],
-		newColorR,
-		newColorG,
-		newColorB,
-		clickedColorR,
-		clickedColorG,
-		clickedColorB,
+		outlineLayerData,
 		totalLoadResources = 3,
 		curLoadResNum = 0,
 
 		// Clears the canvas.
 		clearCanvas = function () {
 
-			context.clearRect(0, 0, canvasWidth, canvasHeight);
+			context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 		},
 
-		// Redraws the canvas.
+		// Draw a color swatch
+		drawColorSwatch = function (color, x, y) {
+
+			context.beginPath();
+			context.arc(x + 46, y + 23, 18, 0, Math.PI * 2, true);
+			context.closePath();
+			context.fillStyle = "rgb(" + color.r + "," + color.g + "," + color.b + ")";
+			context.fill();
+
+			if (curColor === color) {
+				context.drawImage(swatchImage, 0, 0, 59, swatchImageHeight, x, y, 59, swatchImageHeight);
+			} else {
+				context.drawImage(swatchImage, x, y, swatchImageWidth, swatchImageHeight);
+			}
+		},
+
+		// Draw the elements on the canvas
 		redraw = function () {
 
-			var locX = 52,
+			var locX,
 				locY;
 
 			// Make sure required resources are loaded before redrawing
@@ -97,92 +94,37 @@ var paintBucketApp = (function () {
 
 			clearCanvas();
 
-			if (colorLayerData) {
-				context.putImageData(colorLayerData, 0, 0);
-				colorLayerData = context.getImageData(0, 0, canvasWidth, canvasHeight);
-			}
+			// Draw the current state of the color layer to the canvas
+			context.putImageData(colorLayerData, 0, 0);
 
+			// Draw the background
 			context.drawImage(backgroundImage, 0, 0, canvasWidth, canvasHeight);
 
-			// Purple
+			// Draw the color swatches
+			locX = 52;
 			locY = 19;
+			drawColorSwatch(colorPurple, locX, locY);
 
-			context.beginPath();
-			context.arc(locX + 46, locY + 23, 18, 0, Math.PI * 2, true);
-			context.closePath();
-			context.fillStyle = "rgb(" + colorPurple.r + "," + colorPurple.g + "," + colorPurple.b + ")";
-			context.fill();
-
-			if (curColorIndex === 0) {
-				context.drawImage(paintImage, 0, 0, 59, mediumImageHeight, locX, locY, 59, mediumImageHeight);
-
-			} else {
-				context.drawImage(paintImage, locX, locY, mediumImageWidth, mediumImageHeight);
-			}
-
-			// Green
 			locY += 46;
+			drawColorSwatch(colorGreen, locX, locY);
 
-			context.beginPath();
-			context.arc(locX + 46, locY + 23, 18, 0, Math.PI * 2, true);
-			context.fillStyle = "rgb(" + colorGreen.r + "," + colorGreen.g + "," + colorGreen.b + ")";
-			context.fill();
-
-			if (curColorIndex === 1) {
-				context.drawImage(paintImage, 0, 0, 59, mediumImageHeight, locX, locY, 59, mediumImageHeight);
-
-			} else {
-				context.drawImage(paintImage, locX, locY, mediumImageWidth, mediumImageHeight);
-			}
-
-			// Yellow
 			locY += 46;
+			drawColorSwatch(colorYellow, locX, locY);
 
-			context.beginPath();
-			context.arc(locX + 46, locY + 23, 18, 0, Math.PI * 2, true);
-			context.fillStyle = "rgb(" + colorYellow.r + "," + colorYellow.g + "," + colorYellow.b + ")";
-			context.fill();
-
-			if (curColorIndex === 2) {
-				context.drawImage(paintImage, 0, 0, 59, mediumImageHeight, locX, locY, 59, mediumImageHeight);
-			} else {
-				context.drawImage(paintImage, locX, locY, mediumImageWidth, mediumImageHeight);
-			}
-
-			// Yellow
 			locY += 46;
+			drawColorSwatch(colorBrown, locX, locY);
 
-			context.beginPath();
-			context.arc(locX + 46, locY + 23, 18, 0, Math.PI * 2, true);
-			context.fillStyle = "rgb(" + colorBrown.r + "," + colorBrown.g + "," + colorBrown.b + ")";
-			context.fill();
-
-			if (curColorIndex === 3) {
-				context.drawImage(paintImage, 0, 0, 59, mediumImageHeight, locX, locY, 59, mediumImageHeight);
-
-			} else {
-				context.drawImage(paintImage, locX, locY, mediumImageWidth, mediumImageHeight);
-			}
-
-			// Draw the outline image
+			// Draw the outline image on top of everything. We could move this to a separate 
+			//   canvas so we did not have to redraw this everyime.
 			context.drawImage(outlineImage, drawingAreaX, drawingAreaY, drawingAreaWidth, drawingAreaHeight);
 		},
 
-		// Adds a point to the drawing array.
-		// @param x
-		// @param y
-		// @param dragging
-		addClick = function (x, y, dragging) {
+		matchOutlineColor = function (r, g, b, a) {
 
-			clickX.push(x);
-			clickY.push(y);
-			clickTool.push(curTool);
-			clickColor.push(curColor);
-			clickSize.push(curSize);
-			clickDrag.push(dragging);
+			return (r + g + b < 100 && a === 255);
 		},
 
-		matchClickedColor = function (pixelPos) {
+		matchStartColor = function (pixelPos, startR, startG, startB) {
 
 			var r = outlineLayerData.data[pixelPos],
 				g = outlineLayerData.data[pixelPos + 1],
@@ -190,8 +132,7 @@ var paintBucketApp = (function () {
 				a = outlineLayerData.data[pixelPos + 3];
 
 			// If current pixel of the outline image is black
-			if (r + g + b < 100 && a === 255) {
-				//console.log("current pixel is black then it is an outline");
+			if (matchOutlineColor(r, g, b, a)) {
 				return false;
 			}
 
@@ -200,29 +141,27 @@ var paintBucketApp = (function () {
 			b = colorLayerData.data[pixelPos + 2];
 
 			// If the current pixel matches the clicked color
-			if (r === clickedColorR && g === clickedColorG && b === clickedColorB) {
-				//console.log("current pixel matches the clicked color");
+			if (r === startR && g === startG && b === startB) {
 				return true;
 			}
 
 			// If current pixel matches the new color
-			if (r === newColorR && g === newColorG && b === newColorB) {
-				//console.log("current pixel matches the new color");
+			if (r === curColor.r && g === curColor.g && b === curColor.b) {
 				return false;
 			}
 
 			return true;
 		},
 
-		colorPixel = function (pixelPos) {
+		colorPixel = function (pixelPos, r, g, b, a) {
 
-			colorLayerData.data[pixelPos] = newColorR;
-			colorLayerData.data[pixelPos + 1] = newColorG;
-			colorLayerData.data[pixelPos + 2] = newColorB;
-			colorLayerData.data[pixelPos + 3] = 255;
+			colorLayerData.data[pixelPos] = r;
+			colorLayerData.data[pixelPos + 1] = g;
+			colorLayerData.data[pixelPos + 2] = b;
+			colorLayerData.data[pixelPos + 3] = a !== undefined ? a : 255;
 		},
 
-		floodFill = function () {
+		floodFill = function (startX, startY, startR, startG, startB) {
 
 			var newPos,
 				x,
@@ -233,7 +172,8 @@ var paintBucketApp = (function () {
 				drawingBoundLeft = drawingAreaX,
 				drawingBoundTop = drawingAreaY,
 				drawingBoundRight = drawingAreaX + drawingAreaWidth - 1,
-				drawingBoundBottom = drawingAreaY + drawingAreaHeight - 1;
+				drawingBoundBottom = drawingAreaY + drawingAreaHeight - 1,
+				pixelStack = [[startX, startY]];
 
 			while (pixelStack.length) {
 
@@ -245,7 +185,7 @@ var paintBucketApp = (function () {
 				pixelPos = (y * canvasWidth + x) * 4;
 
 				// Go up as long as the color matches and are inside the canvas
-				while (y >= drawingBoundTop && matchClickedColor(pixelPos)) {
+				while (y >= drawingBoundTop && matchStartColor(pixelPos, startR, startG, startB)) {
 					y -= 1;
 					pixelPos -= canvasWidth * 4;
 				}
@@ -256,13 +196,13 @@ var paintBucketApp = (function () {
 				reachRight = false;
 
 				// Go down as long as the color matches and in inside the canvas
-				while (y < drawingBoundBottom && matchClickedColor(pixelPos)) {
+				while (y <= drawingBoundBottom && matchStartColor(pixelPos, startR, startG, startB)) {
 					y += 1;
 
-					colorPixel(pixelPos);
+					colorPixel(pixelPos, curColor.r, curColor.g, curColor.b);
 
 					if (x > drawingBoundLeft) {
-						if (matchClickedColor(pixelPos - 4)) {
+						if (matchStartColor(pixelPos - 4, startR, startG, startB)) {
 							if (!reachLeft) {
 								// Add pixel to stack
 								pixelStack.push([x - 1, y]);
@@ -274,7 +214,7 @@ var paintBucketApp = (function () {
 					}
 
 					if (x < drawingBoundRight) {
-						if (matchClickedColor(pixelPos + 4)) {
+						if (matchStartColor(pixelPos + 4, startR, startG, startB)) {
 							if (!reachRight) {
 								// Add pixel to stack
 								pixelStack.push([x + 1, y]);
@@ -288,44 +228,30 @@ var paintBucketApp = (function () {
 					pixelPos += canvasWidth * 4;
 				}
 			}
-			redraw();
 		},
 
-		flood = function (startX, startY) {
+		// Start painting with paint bucket tool starting from pixel specified by startX and startY
+		paintAt = function (startX, startY) {
 
 			var pixelPos = (startY * canvasWidth + startX) * 4,
 				r = colorLayerData.data[pixelPos],
 				g = colorLayerData.data[pixelPos + 1],
 				b = colorLayerData.data[pixelPos + 2],
-				a = outlineLayerData.data[pixelPos + 3];
+				a = colorLayerData.data[pixelPos + 3];
 
-			clickedColorR = r;
-			clickedColorG = g;
-			clickedColorB = b;
-
-			newColorR = color[curColorIndex].r;
-			newColorG = color[curColorIndex].g;
-			newColorB = color[curColorIndex].b;
-
-			if (clickedColorR === newColorR && clickedColorG === newColorG && clickedColorB === newColorB) {
+			if (r === curColor.r && g === curColor.g && b === curColor.b) {
 				// Return because trying to fill with the same color
 				return;
 			}
 
-			if (r + g + b < 100 && a === 255) {
+			if (matchOutlineColor(r, g, b, a)) {
 				// Return because clicked outline
 				return;
 			}
 
-			pixelStack = [[startX, startY]];
+			floodFill(startX, startY, r, g, b);
 
-			floodFill();
-		},
-
-		// Paint based on mouse click location
-		paintAt = function (mouseX, mouseY) {
-
-			flood(mouseX, mouseY);
+			redraw();
 		},
 
 		// Add mouse event listeners to the canvas
@@ -337,21 +263,17 @@ var paintBucketApp = (function () {
 					mouseY = e.pageY - this.offsetTop;
 
 				if (mouseX < drawingAreaX) { // Left of the drawing area
-					if (mouseX > mediumStartX) {
-						if (mouseY > mediumStartY && mouseY < mediumStartY + mediumImageHeight) {
-							curColorIndex = 0;
+					if (mouseX > swatchStartX) {
+						if (mouseY > swatchStartY && mouseY < swatchStartY + swatchImageHeight) {
 							curColor = colorPurple;
 							redraw();
-						} else if (mouseY > mediumStartY + mediumImageHeight && mouseY < mediumStartY + mediumImageHeight * 2) {
-							curColorIndex = 1;
+						} else if (mouseY > swatchStartY + swatchImageHeight && mouseY < swatchStartY + swatchImageHeight * 2) {
 							curColor = colorGreen;
 							redraw();
-						} else if (mouseY > mediumStartY + mediumImageHeight * 2 && mouseY < mediumStartY + mediumImageHeight * 3) {
-							curColorIndex = 2;
+						} else if (mouseY > swatchStartY + swatchImageHeight * 2 && mouseY < swatchStartY + swatchImageHeight * 3) {
 							curColor = colorYellow;
 							redraw();
-						} else if (mouseY > mediumStartY + mediumImageHeight * 3 && mouseY < mediumStartY + mediumImageHeight * 4) {
-							curColorIndex = 3;
+						} else if (mouseY > swatchStartY + swatchImageHeight * 3 && mouseY < swatchStartY + swatchImageHeight * 4) {
 							curColor = colorBrown;
 							redraw();
 						}
@@ -360,22 +282,6 @@ var paintBucketApp = (function () {
 					// Mouse click location on drawing area
 					paintAt(mouseX, mouseY);
 				}
-			});
-
-			$('#canvas').mousemove(function (e) {
-				if (paint) {
-					addClick(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, true);
-					redraw();
-				}
-			});
-
-			$('#canvas').mouseup(function () {
-				paint = false;
-				redraw();
-			});
-
-			$('#canvas').mouseleave(function () {
-				paint = false;
 			});
 		},
 
@@ -393,12 +299,11 @@ var paintBucketApp = (function () {
 		init = function () {
 
 			// Create the canvas (Neccessary for IE because it doesn't know what a canvas element is)
-			var canvasDiv = document.getElementById('canvasDiv');
-			canvas = document.createElement('canvas');
+			var canvas = document.createElement('canvas');
 			canvas.setAttribute('width', canvasWidth);
 			canvas.setAttribute('height', canvasHeight);
 			canvas.setAttribute('id', 'canvas');
-			canvasDiv.appendChild(canvas);
+			document.getElementById('canvasDiv').appendChild(canvas);
 
 			if (typeof G_vmlCanvasManager !== "undefined") {
 				canvas = G_vmlCanvasManager.initElement(canvas);
@@ -411,8 +316,8 @@ var paintBucketApp = (function () {
 			backgroundImage.onload = resourceLoaded;
 			backgroundImage.src = "images/background.png";
 
-			paintImage.onload = resourceLoaded;
-			paintImage.src = "images/paint-outline.png";
+			swatchImage.onload = resourceLoaded;
+			swatchImage.src = "images/paint-outline.png";
 
 			outlineImage.onload = function () {
 				context.drawImage(outlineImage, drawingAreaX, drawingAreaY, drawingAreaWidth, drawingAreaHeight);
